@@ -51,9 +51,21 @@ ${bodyHtml}
 
 /**
  * Handle a new job webhook — create a Quotient quote if none exists yet.
+ * Only fires for INSERT events on Active jobs.
  */
 async function handleJobWebhook(event) {
-  const { uuid: jobUUID, company_id: companyId, job_description: jobDescription } = event;
+  const {
+    uuid: jobUUID,
+    company_id: companyId,
+    job_description: jobDescription,
+    status,
+    change_type: changeType,
+  } = event;
+
+  // Only create quotes for brand-new active jobs, not edits
+  if (changeType && changeType !== 'INSERT') {
+    return { statusCode: 200, body: 'Skipped — not an INSERT event.' };
+  }
 
   // Only act on new jobs (no existing quote marker)
   if (extractQuoteId(jobDescription)) {
@@ -63,15 +75,22 @@ async function handleJobWebhook(event) {
   const sm8 = new ServiceM8(event.auth.accessToken);
   const quotient = new Quotient();
 
-  const [job, company] = await Promise.all([
+  const [job, company, contacts] = await Promise.all([
     sm8.getJob(jobUUID),
     sm8.getCompany(companyId),
+    sm8.getJobContacts(jobUUID),
   ]);
 
+  // Prefer the primary job contact's details over generic company contact info
+  const primaryContact = Array.isArray(contacts) ? contacts[0] : null;
+  const customerEmail = (primaryContact && primaryContact.email) || company.email || '';
+  const customerPhone = (primaryContact && primaryContact.phone) || company.phone || '';
+  const customerName = (primaryContact && primaryContact.name) || company.name || '';
+
   const quote = await quotient.createQuote({
-    customerName: company.name || '',
-    customerEmail: company.email || '',
-    customerPhone: company.phone || '',
+    customerName,
+    customerEmail,
+    customerPhone,
     customerAddress: job.job_address || '',
     title: `Job: ${job.job_description || jobUUID}`,
     notes: job.job_description || '',
@@ -84,6 +103,7 @@ async function handleJobWebhook(event) {
     : marker;
 
   await sm8.updateJob(jobUUID, { job_description: updatedDescription });
+  await sm8.addJobNote(jobUUID, `Quotient quote created (ID: ${quote.id}). View: ${quote.viewUrl}`);
 
   return { statusCode: 200, body: 'Quote created.' };
 }
@@ -99,16 +119,22 @@ async function handleOpenQuote(event) {
   let quoteId = extractQuoteId(jobDescription);
 
   if (!quoteId) {
-    // Create a new quote
-    const [job, company] = await Promise.all([
+    // Create a new quote using job contact data where available
+    const [job, company, contacts] = await Promise.all([
       sm8.getJob(jobUUID),
       sm8.getCompany(companyId),
+      sm8.getJobContacts(jobUUID),
     ]);
 
+    const primaryContact = Array.isArray(contacts) ? contacts[0] : null;
+    const customerEmail = (primaryContact && primaryContact.email) || company.email || '';
+    const customerPhone = (primaryContact && primaryContact.phone) || company.phone || '';
+    const customerName = (primaryContact && primaryContact.name) || company.name || '';
+
     const created = await quotient.createQuote({
-      customerName: company.name || '',
-      customerEmail: company.email || '',
-      customerPhone: company.phone || '',
+      customerName,
+      customerEmail,
+      customerPhone,
       customerAddress: job.job_address || '',
       title: `Job: ${job.job_description || jobUUID}`,
       notes: job.job_description || '',
@@ -119,6 +145,7 @@ async function handleOpenQuote(event) {
     const marker = `[quotient_quote_id:${quoteId}]`;
     const desc = job.job_description ? `${job.job_description} ${marker}` : marker;
     await sm8.updateJob(jobUUID, { job_description: desc });
+    await sm8.addJobNote(jobUUID, `Quotient quote created (ID: ${quoteId}). View: ${created.viewUrl}`);
   }
 
   const quote = await quotient.getQuote(quoteId);
@@ -178,6 +205,11 @@ async function handleSyncStatus(event) {
 
   const jobQueue = new JobQueue(sm8);
   const { lineItems, queueName } = await jobQueue.processAcceptedQuote(jobUUID, quote);
+
+  await sm8.addJobNote(
+    jobUUID,
+    `Quotient quote accepted. ${lineItems.length} line item(s) synced to billing. Job moved to "${queueName}". Quote ID: ${quoteId}.`
+  );
 
   const rows = lineItems
     .map(

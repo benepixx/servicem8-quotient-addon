@@ -4,7 +4,7 @@
   "description": "ServiceM8 addon for Quotient quoting integration",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
+    "start": "node server.js",
     "test": "node --test"
   },
   "engines": {
