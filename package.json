@@ -1,0 +1,17 @@
+{
+  "name": "servicem8-quotient-addon",
+  "version": "1.0.0",
+  "description": "ServiceM8 addon for Quotient quoting integration",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "form-data": "^4.0.0"
+  },
+  "license": "MIT"
+}

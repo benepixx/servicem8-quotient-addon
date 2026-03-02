@@ -1,0 +1,33 @@
+{
+  "name": "Quotient Quoting Integration",
+  "version": "1.0",
+  "iconURL": "https://yourhost.com/quotient-icon.png",
+  "supportURL": "https://yourhost.com/support",
+  "supportEmail": "support@yourdomain.com",
+  "oauth": {
+    "scope": "read_jobs manage_jobs create_jobs read_customers manage_customers read_job_attachments publish_job_attachments read_job_queues manage_job_queues"
+  },
+  "actions": [
+    {
+      "name": "Create / Open Quote",
+      "type": "online",
+      "entity": "job",
+      "iconURL": "https://yourhost.com/quotient-icon.png",
+      "event": "quotient_open_quote"
+    },
+    {
+      "name": "Sync Quote Status",
+      "type": "online",
+      "entity": "job",
+      "iconURL": "https://yourhost.com/quotient-icon.png",
+      "event": "quotient_sync_status"
+    }
+  ],
+  "menuItems": [],
+  "webhooks": [
+    {
+      "object": "job",
+      "fields": ["uuid", "status", "job_address", "job_description", "company_id"]
+    }
+  ]
+}
