@@ -50,65 +50,6 @@ ${bodyHtml}
 }
 
 /**
- * Handle a new job webhook — create a Quotient quote if none exists yet.
- * Only fires for INSERT events on Active jobs.
- */
-async function handleJobWebhook(event) {
-  const {
-    uuid: jobUUID,
-    company_id: companyId,
-    job_description: jobDescription,
-    status,
-    change_type: changeType,
-  } = event;
-
-  // Only create quotes for brand-new active jobs, not edits
-  if (changeType && changeType !== 'INSERT') {
-    return { statusCode: 200, body: 'Skipped — not an INSERT event.' };
-  }
-
-  // Only act on new jobs (no existing quote marker)
-  if (extractQuoteId(jobDescription)) {
-    return { statusCode: 200, body: 'Quote already exists.' };
-  }
-
-  const sm8 = new ServiceM8(event.auth.accessToken);
-  const quotient = new Quotient();
-
-  const [job, company, contacts] = await Promise.all([
-    sm8.getJob(jobUUID),
-    sm8.getCompany(companyId),
-    sm8.getJobContacts(jobUUID),
-  ]);
-
-  // Prefer the primary job contact's details over generic company contact info
-  const primaryContact = Array.isArray(contacts) ? contacts[0] : null;
-  const customerEmail = (primaryContact && primaryContact.email) || company.email || '';
-  const customerPhone = (primaryContact && primaryContact.phone) || company.phone || '';
-  const customerName = (primaryContact && primaryContact.name) || company.name || '';
-
-  const quote = await quotient.createQuote({
-    customerName,
-    customerEmail,
-    customerPhone,
-    customerAddress: job.job_address || '',
-    title: `Job: ${job.job_description || jobUUID}`,
-    notes: job.job_description || '',
-    reference: jobUUID,
-  });
-
-  const marker = `[quotient_quote_id:${quote.id}]`;
-  const updatedDescription = jobDescription
-    ? `${jobDescription} ${marker}`
-    : marker;
-
-  await sm8.updateJob(jobUUID, { job_description: updatedDescription });
-  await sm8.addJobNote(jobUUID, `Quotient quote created (ID: ${quote.id}). View: ${quote.viewUrl}`);
-
-  return { statusCode: 200, body: 'Quote created.' };
-}
-
-/**
  * Handle "Create / Open Quote" job action — show popup with quote details.
  */
 async function handleOpenQuote(event) {
@@ -260,10 +201,6 @@ function escapeHtml(str) {
 async function handler(event) {
   try {
     const eventType = event.eventType || event.type || '';
-
-    if (eventType === 'webhook' && event.object === 'job') {
-      return await handleJobWebhook(event);
-    }
 
     if (eventType === 'quotient_open_quote') {
       return await handleOpenQuote(event);

@@ -72,29 +72,15 @@ test('handler returns 400 for unknown event type', async () => {
   assert.match(result.body, /Unknown event type/);
 });
 
-test('handler skips webhook for non-INSERT change_type', async () => {
+test('handler returns 400 for webhook events (auto-creation is disabled)', async () => {
   const result = await handler({
     eventType: 'webhook',
     object: 'job',
     uuid: 'job-uuid',
     company_id: 'co-uuid',
-    job_description: '[quotient_quote_id:99]',
-    change_type: 'UPDATE',
+    job_description: '',
     auth: { accessToken: 'tok' },
   });
-  assert.equal(result.statusCode, 200);
-  assert.match(result.body, /Skipped/);
-});
-
-test('handler returns 200 for webhook with existing quote marker', async () => {
-  const result = await handler({
-    eventType: 'webhook',
-    object: 'job',
-    uuid: 'job-uuid',
-    company_id: 'co-uuid',
-    job_description: '[quotient_quote_id:99]',
-    auth: { accessToken: 'tok' },
-  });
-  assert.equal(result.statusCode, 200);
-  assert.match(result.body, /Quote already exists/);
+  assert.equal(result.statusCode, 400);
+  assert.match(result.body, /Unknown event type/);
 });

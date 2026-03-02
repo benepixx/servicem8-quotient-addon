@@ -23,11 +23,5 @@
       "event": "quotient_sync_status"
     }
   ],
-  "menuItems": [],
-  "webhooks": [
-    {
-      "object": "job",
-      "fields": ["uuid", "status", "job_address", "job_description", "company_id"]
-    }
-  ]
+  "menuItems": []
 }

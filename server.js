@@ -1,36 +1,9 @@
 'use strict';
 
 const http = require('http');
-const crypto = require('crypto');
 const { handler } = require('./index');
 
 const PORT = process.env.PORT || 3000;
-const WEBHOOK_SECRET = process.env.SM8_WEBHOOK_SECRET || '';
-
-/**
- * Verify the HMAC-SHA256 signature that ServiceM8 attaches to webhook requests.
- * Returns true if the signature is valid (or if no secret is configured, which
- * allows local development without a secret).
- *
- * @param {string} rawBody  - Raw request body string
- * @param {string} signature - Value of X-ServiceM8-Webhook-Signature header
- * @returns {boolean}
- */
-function verifySignature(rawBody, signature) {
-  if (!WEBHOOK_SECRET) {
-    console.warn(
-      'WARNING: SM8_WEBHOOK_SECRET is not set. Webhook signature validation is disabled. ' +
-      'Set this variable in production to prevent unauthorized requests.'
-    );
-    return true; // Skip validation when no secret configured
-  }
-  if (!signature) return false;
-  const expected = crypto
-    .createHmac('sha256', WEBHOOK_SECRET)
-    .update(rawBody)
-    .digest('hex');
-  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
-}
 
 /**
  * Read the full body of an IncomingMessage as a string.
@@ -67,18 +40,6 @@ const server = http.createServer(async (req, res) => {
     console.error('Failed to read request body:', err);
     res.writeHead(400, { 'Content-Type': 'text/plain' });
     res.end('Bad Request');
-    return;
-  }
-
-  // Validate webhook signature for webhook events
-  const signature = req.headers['x-servicem8-webhook-signature'];
-  const contentType = req.headers['content-type'] || '';
-
-  // Webhooks carry a signature; action popups do not
-  if (signature !== undefined && !verifySignature(rawBody, signature)) {
-    console.warn('Invalid webhook signature — request rejected');
-    res.writeHead(401, { 'Content-Type': 'text/plain' });
-    res.end('Unauthorized');
     return;
   }
 
