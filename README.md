@@ -31,51 +31,115 @@ servicem8-quotient-addon/
 
 ## Setup
 
-### 1. Install dependencies
+### 1. Prerequisites
 
 ```bash
 npm install
 ```
 
-### 2. Configure environment variables
-
-Copy `.env.example` to `.env` and fill in the values:
+Copy `.env.example` and fill in your credentials (for Self Hosted only — see deployment options below):
 
 ```bash
 cp .env.example .env
 ```
 
-| Variable | Description |
-|---|---|
-| `PORT` | Port to listen on (default: `3000`) |
-| `QUOTIENT_API_KEY` | Your Quotient API key |
-| `QUOTIENT_ACCOUNT_ID` | Your Quotient account ID |
-| `SM8_WEBHOOK_SECRET` | ServiceM8 webhook secret (from addon settings) — leave blank to skip validation in local dev |
-| `SM8_PARTS_TO_ORDER_QUEUE_UUID` | ServiceM8 queue UUID for "Parts to Order" |
-| `SM8_READY_TO_BOOK_QUEUE_UUID` | ServiceM8 queue UUID for "Ready to Book" |
-
-To find your queue UUIDs, call the ServiceM8 API directly:
-```
-GET https://api.servicem8.com/api_1.0/jobqueue.json
-Authorization: Bearer <access_token>
-```
-
-### 3. Run the server
-
-```bash
-npm start
-# → ServiceM8-Quotient addon server listening on port 3000
-```
-
-### 4. Run tests
+### 2. Run tests
 
 ```bash
 npm test
 ```
 
-### 5. Deploy
+---
 
-Point your ServiceM8 addon endpoint URL to your hosted server (e.g. `https://yourhost.com/`). Update the `iconURL`, `supportURL`, and `supportEmail` fields in `manifest.json` to match.
+## Deployment
+
+ServiceM8 offers two addon types that work with this code. Choose whichever matches your situation:
+
+---
+
+### Option A — Simple Function (Node.js) ✅ Recommended
+
+ServiceM8 **hosts and runs** your function — no server, no infrastructure needed.
+
+1. **Build the deployment zip:**
+   ```bash
+   npm install
+   npm run package
+   # → creates addon.zip in the project root
+   ```
+
+2. **Create the addon in ServiceM8:**
+   - Go to **ServiceM8 Developer Console** → *Add new addon*
+   - Choose **Simple Function (Node.js)**
+   - Upload `addon.zip`
+   - Set environment variables in the console (no `.env` file needed):
+
+   | Variable | Value |
+   |---|---|
+   | `QUOTIENT_API_KEY` | Your Quotient API key |
+   | `QUOTIENT_ACCOUNT_ID` | Your Quotient account ID |
+   | `SM8_PARTS_TO_ORDER_QUEUE_UUID` | Queue UUID for "Parts to Order" |
+   | `SM8_READY_TO_BOOK_QUEUE_UUID` | Queue UUID for "Ready to Book" |
+
+   > ℹ️ `SM8_WEBHOOK_SECRET` is **not needed** for Simple Function — ServiceM8 authenticates calls internally.
+
+3. **Upload `manifest.json`** in the addon settings (or paste its contents), then activate the addon.
+
+---
+
+### Option B — Self Hosted Web Service
+
+You run the server on your own infrastructure and give ServiceM8 the public URL.
+
+1. **Configure environment variables** (fill in `.env` or set them in your hosting platform):
+
+   | Variable | Description |
+   |---|---|
+   | `PORT` | Port to listen on (default: `3000`) |
+   | `QUOTIENT_API_KEY` | Your Quotient API key |
+   | `QUOTIENT_ACCOUNT_ID` | Your Quotient account ID |
+   | `SM8_WEBHOOK_SECRET` | Webhook secret from ServiceM8 addon settings |
+   | `SM8_PARTS_TO_ORDER_QUEUE_UUID` | Queue UUID for "Parts to Order" |
+   | `SM8_READY_TO_BOOK_QUEUE_UUID` | Queue UUID for "Ready to Book" |
+
+2. **Start the server:**
+   ```bash
+   npm start
+   # → ServiceM8-Quotient addon server listening on port 3000
+   ```
+   The server must be reachable at a public HTTPS URL (e.g. via a reverse proxy like nginx + Let's Encrypt, or a platform like Railway, Render, or Fly.io).
+
+3. **Create the addon in ServiceM8:**
+   - Go to **ServiceM8 Developer Console** → *Add new addon*
+   - Choose **Self Hosted Web Service**
+   - Enter your public URL as the endpoint (e.g. `https://yourhost.com/`)
+   - Copy the webhook secret shown and set it as `SM8_WEBHOOK_SECRET`
+   - Upload `manifest.json` or paste its contents, then activate the addon.
+
+---
+
+### Finding your queue UUIDs
+
+After connecting your ServiceM8 account, call the API to list your queues:
+
+```
+GET https://api.servicem8.com/api_1.0/jobqueue.json
+Authorization: Bearer <your_access_token>
+```
+
+Copy the `uuid` values for your "Parts to Order" and "Ready to Book" queues.
+
+---
+
+### Update `manifest.json`
+
+Before publishing, replace the placeholder URLs in `manifest.json`:
+
+```json
+"iconURL": "https://yourhost.com/quotient-icon.png",
+"supportURL": "https://yourhost.com/support",
+"supportEmail": "support@yourdomain.com"
+```
 
 ## How it works
 

@@ -17,7 +17,13 @@ const WEBHOOK_SECRET = process.env.SM8_WEBHOOK_SECRET || '';
  * @returns {boolean}
  */
 function verifySignature(rawBody, signature) {
-  if (!WEBHOOK_SECRET) return true; // Skip validation when no secret configured
+  if (!WEBHOOK_SECRET) {
+    console.warn(
+      'WARNING: SM8_WEBHOOK_SECRET is not set. Webhook signature validation is disabled. ' +
+      'Set this variable in production to prevent unauthorized requests.'
+    );
+    return true; // Skip validation when no secret configured
+  }
   if (!signature) return false;
   const expected = crypto
     .createHmac('sha256', WEBHOOK_SECRET)

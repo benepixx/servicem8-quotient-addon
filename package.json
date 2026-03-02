@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "package": "zip -r addon.zip index.js lib/ manifest.json package.json package-lock.json node_modules/"
   },
   "engines": {
     "node": ">=18"
