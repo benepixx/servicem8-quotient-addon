@@ -8,26 +8,14 @@
     {
       "name": "quotient_api_key",
       "label": "Quotient API Key",
-      "type": "password",
-      "required": true
-    },
-    {
-      "name": "quotient_account_id",
-      "label": "Quotient Account ID",
       "type": "text",
       "required": true
     },
     {
-      "name": "sm8_parts_to_order_queue_uuid",
-      "label": "Parts to Order Queue UUID",
+      "name": "quotient_subdomain",
+      "label": "Quotient Subdomain",
       "type": "text",
-      "required": false
-    },
-    {
-      "name": "sm8_ready_to_book_queue_uuid",
-      "label": "Ready to Book Queue UUID",
-      "type": "text",
-      "required": false
+      "required": true
     }
   ],
   "actions": [
@@ -45,6 +33,9 @@
       "iconURL": "https://yourhost.com/quotient-icon.png",
       "event": "quotient_sync_status"
     }
+  ],
+  "menuItems": []
+}
   ],
   "menuItems": []
 }
