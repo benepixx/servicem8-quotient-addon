@@ -1,6 +1,6 @@
 {
   "name": "Quotient Quoting Integration",
-  "version": "1.0",
+  "version": "1.1",
   "oauth": {
     "scope": "read_jobs manage_jobs create_jobs read_customers manage_customers read_job_attachments publish_job_attachments read_job_queues manage_job_queues"
   },
