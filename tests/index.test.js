@@ -2,7 +2,7 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { extractQuoteId, escapeHtml, handler } = require('../index');
+const { extractQuoteId, escapeHtml, handler } = require('../function');
 
 // ── extractQuoteId ────────────────────────────────────────────────────────────
 
