@@ -2,33 +2,7 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { extractQuoteId, escapeHtml, handler } = require('../function');
-
-// ── extractQuoteId ────────────────────────────────────────────────────────────
-
-test('extractQuoteId returns the ID when marker is present', () => {
-  assert.equal(extractQuoteId('Some notes [quotient_quote_id:ABC-123] end'), 'ABC-123');
-});
-
-test('extractQuoteId returns the ID at start of string', () => {
-  assert.equal(extractQuoteId('[quotient_quote_id:42]'), '42');
-});
-
-test('extractQuoteId returns null when no marker', () => {
-  assert.equal(extractQuoteId('no marker here'), null);
-});
-
-test('extractQuoteId returns null for empty string', () => {
-  assert.equal(extractQuoteId(''), null);
-});
-
-test('extractQuoteId returns null for null input', () => {
-  assert.equal(extractQuoteId(null), null);
-});
-
-test('extractQuoteId returns null for undefined input', () => {
-  assert.equal(extractQuoteId(undefined), null);
-});
+const { escapeHtml, handler } = require('../addon/function');
 
 // ── escapeHtml ────────────────────────────────────────────────────────────────
 

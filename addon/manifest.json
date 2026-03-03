@@ -1,0 +1,32 @@
+{
+  "name": "Quotient Quoting Integration",
+  "version": "2.0",
+  "functionName": "handler",
+  "oauth": {
+    "scope": "read_jobs manage_jobs manage_job_materials read_customers manage_customers read_job_attachments publish_job_attachments read_job_queues manage_job_queues"
+  },
+  "settings": [
+    {
+      "name": "sm8_parts_to_order_queue_name",
+      "label": "SM8 Queue Name — Parts to Order",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "sm8_ready_to_book_queue_name",
+      "label": "SM8 Queue Name — Ready to Book",
+      "type": "text",
+      "required": false
+    }
+  ],
+  "actions": [
+    {
+      "name": "Create / Open Quote",
+      "type": "online",
+      "entity": "job",
+      "event": "quotient_open_quote",
+      "iconUrl": "https://gdm-catalog-fmapi-prod.imgix.net/ProductLogo/b1c89ccc-f997-4ace-8f85-54cc416aa71c.png"
+    }
+  ],
+  "menuItems": []
+}
