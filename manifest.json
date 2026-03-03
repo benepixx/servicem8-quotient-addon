@@ -4,6 +4,32 @@
   "oauth": {
     "scope": "read_jobs manage_jobs create_jobs read_customers manage_customers read_job_attachments publish_job_attachments read_job_queues manage_job_queues"
   },
+  "settings": [
+    {
+      "name": "quotient_api_key",
+      "label": "Quotient API Key",
+      "type": "password",
+      "required": true
+    },
+    {
+      "name": "quotient_account_id",
+      "label": "Quotient Account ID",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "sm8_parts_to_order_queue_uuid",
+      "label": "Parts to Order Queue UUID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "sm8_ready_to_book_queue_uuid",
+      "label": "Ready to Book Queue UUID",
+      "type": "text",
+      "required": false
+    }
+  ],
   "actions": [
     {
       "name": "Create / Open Quote",
