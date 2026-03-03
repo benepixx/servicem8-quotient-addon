@@ -36,13 +36,15 @@
       "name": "Create / Open Quote",
       "type": "online",
       "entity": "job",
-      "event": "quotient_open_quote"
+      "event": "quotient_open_quote",
+      "iconUrl": "https://gdm-catalog-fmapi-prod.imgix.net/ProductLogo/b1c89ccc-f997-4ace-8f85-54cc416aa71c.png"
     },
     {
       "name": "Sync Quote Status",
       "type": "online",
       "entity": "job",
-      "event": "quotient_sync_status"
+      "event": "quotient_sync_status",
+      "iconUrl": "https://gdm-catalog-fmapi-prod.imgix.net/ProductLogo/b1c89ccc-f997-4ace-8f85-54cc416aa71c.png"
     }
   ],
   "menuItems": []
