@@ -1,23 +1,11 @@
 {
   "name": "Quotient Quoting Integration",
-  "version": "1.1",
+  "version": "2.0",
   "functionName": "handler",
   "oauth": {
-    "scope": "read_jobs manage_jobs create_jobs read_customers manage_customers read_job_attachments publish_job_attachments read_job_queues manage_job_queues"
+    "scope": "read_jobs manage_jobs manage_job_materials read_customers manage_customers read_job_attachments publish_job_attachments read_job_queues manage_job_queues"
   },
   "settings": [
-    {
-      "name": "quotient_api_key",
-      "label": "Quotient API Key",
-      "type": "text",
-      "required": true
-    },
-    {
-      "name": "quotient_account_id",
-      "label": "Quotient Account ID",
-      "type": "text",
-      "required": true
-    },
     {
       "name": "sm8_parts_to_order_queue_uuid",
       "label": "SM8 Queue UUID — Parts to Order",
@@ -37,13 +25,6 @@
       "type": "online",
       "entity": "job",
       "event": "quotient_open_quote",
-      "iconUrl": "https://gdm-catalog-fmapi-prod.imgix.net/ProductLogo/b1c89ccc-f997-4ace-8f85-54cc416aa71c.png"
-    },
-    {
-      "name": "Sync Quote Status",
-      "type": "online",
-      "entity": "job",
-      "event": "quotient_sync_status",
       "iconUrl": "https://gdm-catalog-fmapi-prod.imgix.net/ProductLogo/b1c89ccc-f997-4ace-8f85-54cc416aa71c.png"
     }
   ],

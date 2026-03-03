@@ -1,0 +1,8 @@
+name = "servicem8-quotient-webhook"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+[vars]
+SM8_PARTS_TO_ORDER_QUEUE_UUID = ""
+SM8_READY_TO_BOOK_QUEUE_UUID = ""
+# SM8_ACCESS_TOKEN should be set as a secret via: wrangler secret put SM8_ACCESS_TOKEN

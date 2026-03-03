@@ -1,147 +1,176 @@
 # servicem8-quotient-addon
 
-A Node.js ServiceM8 addon that integrates with [Quotient](https://www.quotientapp.com/) to create and manage quotes directly from ServiceM8 jobs.
+A two-part integration between [ServiceM8](https://www.servicem8.com/) and [Quotient](https://www.quotientapp.com/) using a webhook-driven architecture.
 
-## Workflow
+> **Why two parts?** Quotient has no REST API — it only sends outbound webhooks. ServiceM8 SimpleFunction cannot receive inbound HTTP requests from third parties. A Cloudflare Worker bridges the gap.
 
-| Trigger | Action |
+---
+
+## Architecture
+
+```
+ServiceM8 Job
+    │
+    │  User clicks "Create / Open Quote" (SM8 job action)
+    ▼
+addon/function.js  (ServiceM8 SimpleFunction)
+    │  Shows popup: suggested quote title, customer info, "Open Quotient" button
+    ▼
+User manually creates quote in Quotient using the suggested title
+    │
+    │  e.g. "#6786 – Bathroom Reno"
+    ▼
+Quotient sends webhook → https://servicem8-quotient-webhook.<account>.workers.dev/webhook
+    │
+    ▼
+worker/src/index.js  (Cloudflare Worker)
+    │  Parses job number from quote title
+    │  Looks up SM8 job UUID
+    │  Takes action in ServiceM8 (add note, sync materials, move queue, etc.)
+    ▼
+ServiceM8 job updated automatically
+```
+
+---
+
+## Quote Title Naming Convention
+
+The link between Quotient and ServiceM8 is the **SM8 job number** embedded in the Quotient quote title. The worker's parser handles all of these formats:
+
+| Quote title | Job number extracted |
 |---|---|
-| Job Action: "Create / Open Quote" | Creates a quote in Quotient (if none exists yet) and opens a popup with quote details and a direct link to edit in Quotient |
-| Job Action: "Sync Quote Status" | Polls Quotient; if accepted, attaches signed PDF, syncs line items to SM8 billing, moves job to correct queue |
-| Quote accepted in Quotient | Signed PDF attached → line items pushed to billing → job moved to **Parts to Order** or **Ready to Book** queue |
+| `#6786 – Bathroom Reno` | `6786` |
+| `Job #6786 – Home Security` | `6786` |
+| `Job 6786` | `6786` |
+| `6786 - Solar Install` | `6786` |
 
-## Project Structure
+The SM8 addon popup shows the **suggested quote title** (e.g. `#6786 – Bathroom Reno`) so users know exactly what to type in Quotient.
+
+---
+
+## Quotient Webhook Events
+
+| `event_name` | Action taken in ServiceM8 |
+|---|---|
+| `quote_accepted` | Clear existing job materials → add accepted line items → move job to "Ready to Book" or "Parts to Order" queue → add private note |
+| `quote_declined` | Add private note: "Quotient quote #N was declined." |
+| `quote_sent` | Add private note: "Quotient quote #N has been sent to the customer." |
+| `quote_completed` | Add private note: "Quotient quote #N is completed." |
+| `customer_viewed_quote` | Add private note: "Customer viewed Quotient quote #N." |
+| `customer_asked_question` | Add private note with the question content |
+
+---
+
+## Repo Structure
 
 ```
 servicem8-quotient-addon/
-├── manifest.json       # ServiceM8 addon manifest
-├── server.js           # HTTP server with webhook signature validation
-├── index.js            # Main handler (webhooks + job actions)
-├── lib/
-│   ├── servicem8.js    # ServiceM8 REST API client
-│   ├── quotient.js     # Quotient API client
-│   └── jobQueue.js     # Billing sync & queue routing
+├── addon/
+│   ├── function.js          # SM8 SimpleFunction — UI only
+│   ├── manifest.json        # SM8 addon manifest v2.0
+│   └── .env.example         # Notes only — settings live in SM8 Developer Console
+├── worker/
+│   ├── src/
+│   │   └── index.js         # Cloudflare Worker — Quotient webhook receiver
+│   ├── wrangler.toml        # Wrangler config
+│   └── package.json         # { "devDependencies": { "wrangler": "^3" } }
 ├── tests/
-│   └── index.test.js   # Unit tests (node --test)
-├── .env.example        # Environment variable template
-├── package.json
-└── README.md
-```
-
-## Setup
-
-### 1. Prerequisites
-
-```bash
-npm install
-```
-
-Copy `.env.example` and fill in your credentials (for Self Hosted only — see deployment options below):
-
-```bash
-cp .env.example .env
-```
-
-### 2. Run tests
-
-```bash
-npm test
+│   ├── index.test.js        # Tests for addon/function.js
+│   └── worker.test.js       # Tests for worker extractJobNumber logic
+├── README.md
+└── .gitignore
 ```
 
 ---
 
-## Deployment
+## Part 1: ServiceM8 Addon (`addon/`)
 
-ServiceM8 offers two addon types that work with this code. Choose whichever matches your situation:
+### What it does
 
----
+When a user clicks **"Create / Open Quote"** on a SM8 job, a popup appears showing:
+- The **suggested quote title** to use in Quotient (e.g. `#6786 – Bathroom Reno`)
+- Customer name and address for reference
+- A big **"Open Quotient ↗"** button
+- An info box explaining the naming convention
 
-### Option A — Simple Function (Node.js) ✅ Recommended
+### Deployment
 
-ServiceM8 **hosts and runs** your function — no server, no infrastructure needed.
-
-1. **Build the deployment zip:**
+1. Zip `addon/function.js` and `addon/manifest.json` together:
    ```bash
-   npm install
-   npm run package
-   # → creates addon.zip in the project root
+   cd addon && zip ../addon.zip function.js manifest.json
    ```
 
-2. **Create the addon in ServiceM8:**
-   - Go to **ServiceM8 Developer Console** → *Add new addon*
-   - Choose **Simple Function (Node.js)**
+2. In **ServiceM8 Developer Console** → *Add new addon* → **Simple Function (Node.js)**:
    - Upload `addon.zip`
-   - Set environment variables in the console (no `.env` file needed):
+   - Configure settings in the console:
 
-   | Variable | Value |
+   | Setting | Description |
    |---|---|
-   | `QUOTIENT_API_KEY` | Your Quotient API key |
-   | `QUOTIENT_ACCOUNT_ID` | Your Quotient account ID |
-   | `SM8_PARTS_TO_ORDER_QUEUE_UUID` | Queue UUID for "Parts to Order" |
-   | `SM8_READY_TO_BOOK_QUEUE_UUID` | Queue UUID for "Ready to Book" |
+   | SM8 Queue UUID — Parts to Order | UUID of your "Parts to Order" queue (optional) |
+   | SM8 Queue UUID — Ready to Book | UUID of your "Ready to Book" queue (optional) |
 
-3. **Upload `manifest.json`** in the addon settings (or paste its contents), then activate the addon.
+3. Upload `addon/manifest.json` and activate the addon.
 
----
-
-### Option B — Self Hosted Web Service
-
-You run the server on your own infrastructure and give ServiceM8 the public URL.
-
-1. **Configure environment variables** (fill in `.env` or set them in your hosting platform):
-
-   | Variable | Description |
-   |---|---|
-   | `PORT` | Port to listen on (default: `3000`) |
-   | `QUOTIENT_API_KEY` | Your Quotient API key |
-   | `QUOTIENT_ACCOUNT_ID` | Your Quotient account ID |
-   | `SM8_PARTS_TO_ORDER_QUEUE_UUID` | Queue UUID for "Parts to Order" |
-   | `SM8_READY_TO_BOOK_QUEUE_UUID` | Queue UUID for "Ready to Book" |
-
-2. **Start the server:**
-   ```bash
-   npm start
-   # → ServiceM8-Quotient addon server listening on port 3000
-   ```
-   The server must be reachable at a public HTTPS URL (e.g. via a reverse proxy like nginx + Let's Encrypt, or a platform like Railway, Render, or Fly.io).
-
-3. **Create the addon in ServiceM8:**
-   - Go to **ServiceM8 Developer Console** → *Add new addon*
-   - Choose **Self Hosted Web Service**
-   - Enter your public URL as the endpoint (e.g. `https://yourhost.com/`)
-   - Upload `manifest.json` or paste its contents, then activate the addon.
-
----
-
-### Finding your queue UUIDs
-
-After connecting your ServiceM8 account, call the API to list your queues:
+### Finding queue UUIDs
 
 ```
 GET https://api.servicem8.com/api_1.0/jobqueue.json
 Authorization: Bearer <your_access_token>
 ```
 
-Copy the `uuid` values for your "Parts to Order" and "Ready to Book" queues.
+---
+
+## Part 2: Cloudflare Worker (`worker/`)
+
+### Setup
+
+```bash
+cd worker
+npm install
+```
+
+### Configuration
+
+Set the SM8 access token as a Worker secret (never commit this):
+
+```bash
+wrangler secret put SM8_ACCESS_TOKEN
+```
+
+Optionally set queue UUIDs in `worker/wrangler.toml` under `[vars]`:
+
+```toml
+[vars]
+SM8_PARTS_TO_ORDER_QUEUE_UUID = "your-uuid-here"
+SM8_READY_TO_BOOK_QUEUE_UUID  = "your-uuid-here"
+```
+
+### Deploy
+
+```bash
+wrangler deploy
+```
+
+Your webhook URL will be:
+
+```
+https://servicem8-quotient-webhook.<your-account>.workers.dev/webhook
+```
+
+### Configure Quotient
+
+In Quotient → Settings → Webhooks, add a new webhook pointing to your Worker URL:
+
+```
+https://servicem8-quotient-webhook.<your-account>.workers.dev/webhook
+```
+
+Enable the events: `quote_sent`, `quote_accepted`, `quote_completed`, `customer_viewed_quote`, `customer_asked_question`, `quote_declined`.
 
 ---
 
-### Update `manifest.json`
+## Running Tests
 
-Before publishing, replace the placeholder URLs in `manifest.json`:
-
-```json
-"iconURL": "https://yourhost.com/quotient-icon.png",
-"supportURL": "https://yourhost.com/support",
-"supportEmail": "support@yourdomain.com"
+```bash
+node --test tests/index.test.js tests/worker.test.js
 ```
-
-## How it works
-
-- **Create / Open Quote** action (manual trigger from any job): If no quote exists yet, creates one in Quotient using the job's primary contact details (email/phone from `jobcontact`, falling back to the company record), stamps the quote ID as `[quotient_quote_id:XXX]` in the job description, and logs a note. Always opens a popup showing the customer name, quote status, total, and a direct edit link.
-- **Sync Quote Status** action: fetches the latest status from Quotient. If accepted, it:
-  1. Downloads and attaches the signed PDF to the SM8 job
-  2. Replaces all existing billing line items with the accepted quote's line items
-  3. Moves the job to the correct queue based on whether any parts need ordering
-  4. Logs a summary note to the job
-  5. Shows a summary popup with the synced line items

@@ -2,3 +2,5 @@ node_modules/
 .env
 *.log
 addon.zip
+worker/node_modules/
+.dev.vars
