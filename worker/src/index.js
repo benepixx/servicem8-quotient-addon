@@ -86,6 +86,12 @@ async function setJobQueue(jobUUID, queueUUID, accessToken) {
   return sm8Request('POST', `/job/${jobUUID}.json`, { queue_uuid: queueUUID }, accessToken);
 }
 
+async function findQueueByName(name, accessToken) {
+  const queues = await sm8Request('GET', '/jobqueue.json', null, accessToken);
+  if (!Array.isArray(queues)) return null;
+  return queues.find((q) => q.name === name) || null;
+}
+
 async function handleWebhook(payload, env) {
   const accessToken = env.SM8_ACCESS_TOKEN;
   const jobNumber = extractJobNumber(payload.title);
@@ -108,18 +114,22 @@ async function handleWebhook(payload, env) {
     await addJobMaterials(jobUUID, items, accessToken);
 
     const needsParts = items.some((item) => (item.cost_price || 0) > 0);
-    const queueUUID = needsParts
-      ? env.SM8_PARTS_TO_ORDER_QUEUE_UUID
-      : env.SM8_READY_TO_BOOK_QUEUE_UUID;
-    const queueName = needsParts ? 'Parts to Order' : 'Ready to Book';
+    const targetQueueName = needsParts
+      ? (env.SM8_PARTS_TO_ORDER_QUEUE_NAME || 'Parts to Order')
+      : (env.SM8_READY_TO_BOOK_QUEUE_NAME || 'Ready to Book');
 
-    if (queueUUID) {
-      await setJobQueue(jobUUID, queueUUID, accessToken);
+    const queue = await findQueueByName(targetQueueName, accessToken);
+    if (queue) {
+      await setJobQueue(jobUUID, queue.uuid, accessToken);
     }
+
+    const queueNote = queue
+      ? `Job moved to "${targetQueueName}".`
+      : `Queue "${targetQueueName}" not found in SM8 — queue not updated.`;
 
     await addJobNote(
       jobUUID,
-      `Quotient quote #${quoteNumber} was accepted. ${items.length} item(s) added to billing. Job moved to "${queueName}".`,
+      `Quotient quote #${quoteNumber} was accepted. ${items.length} item(s) added to billing. ${queueNote}`,
       accessToken
     );
   } else if (eventName === 'quote_declined') {

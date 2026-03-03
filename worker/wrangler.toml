@@ -3,6 +3,9 @@ main = "src/index.js"
 compatibility_date = "2024-01-01"
 
 [vars]
-SM8_PARTS_TO_ORDER_QUEUE_UUID = ""
-SM8_READY_TO_BOOK_QUEUE_UUID = ""
+# Names of the SM8 job queues to move jobs into after quote acceptance.
+# These must exactly match queue names as they appear in ServiceM8.
+# Defaults are used if these vars are not set.
+SM8_PARTS_TO_ORDER_QUEUE_NAME = "Parts to Order"
+SM8_READY_TO_BOOK_QUEUE_NAME = "Ready to Book"
 # SM8_ACCESS_TOKEN should be set as a secret via: wrangler secret put SM8_ACCESS_TOKEN

@@ -7,14 +7,14 @@
   },
   "settings": [
     {
-      "name": "sm8_parts_to_order_queue_uuid",
-      "label": "SM8 Queue UUID — Parts to Order",
+      "name": "sm8_parts_to_order_queue_name",
+      "label": "SM8 Queue Name — Parts to Order",
       "type": "text",
       "required": false
     },
     {
-      "name": "sm8_ready_to_book_queue_uuid",
-      "label": "SM8 Queue UUID — Ready to Book",
+      "name": "sm8_ready_to_book_queue_name",
+      "label": "SM8 Queue Name — Ready to Book",
       "type": "text",
       "required": false
     }
