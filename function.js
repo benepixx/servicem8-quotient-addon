@@ -163,9 +163,9 @@ class ServiceM8 {
 // ── Quotient ─────────────────────────────────────────────────────────────────
 
 class Quotient {
-  constructor() {
-    this.apiKey = process.env.QUOTIENT_API_KEY;
-    this.accountId = process.env.QUOTIENT_ACCOUNT_ID;
+  constructor(apiKey, accountId) {
+    this.apiKey = apiKey;
+    this.accountId = accountId;
     this.hostname = 'api.quotientapp.com';
   }
 
@@ -286,12 +286,11 @@ class Quotient {
 
 // ── JobQueue ─────────────────────────────────────────────────────────────────
 
-const PARTS_TO_ORDER_QUEUE_UUID = process.env.SM8_PARTS_TO_ORDER_QUEUE_UUID || '';
-const READY_TO_BOOK_QUEUE_UUID = process.env.SM8_READY_TO_BOOK_QUEUE_UUID || '';
-
 class JobQueue {
-  constructor(sm8Client) {
+  constructor(sm8Client, partsToOrderQueueUUID, readyToBookQueueUUID) {
     this.sm8 = sm8Client;
+    this.partsToOrderQueueUUID = partsToOrderQueueUUID || '';
+    this.readyToBookQueueUUID = readyToBookQueueUUID || '';
   }
 
   async processAcceptedQuote(jobUUID, quote) {
@@ -324,7 +323,7 @@ class JobQueue {
       (item) => (item.unit_cost || item.unitCost || 0) > 0
     );
 
-    const queueUUID = needsParts ? PARTS_TO_ORDER_QUEUE_UUID : READY_TO_BOOK_QUEUE_UUID;
+    const queueUUID = needsParts ? this.partsToOrderQueueUUID : this.readyToBookQueueUUID;
     const queueName = needsParts ? 'Parts to Order' : 'Ready to Book';
 
     if (queueUUID) {
@@ -387,7 +386,7 @@ ${bodyHtml}
 async function handleOpenQuote(event) {
   const { uuid: jobUUID, company_id: companyId, job_description: jobDescription } = event;
   const sm8 = new ServiceM8(event.auth.accessToken);
-  const quotient = new Quotient();
+  const quotient = new Quotient(event.settings.quotient_api_key, event.settings.quotient_account_id);
 
   let quoteId = extractQuoteId(jobDescription);
 
@@ -441,7 +440,7 @@ async function handleOpenQuote(event) {
 async function handleSyncStatus(event) {
   const { uuid: jobUUID, job_description: jobDescription } = event;
   const sm8 = new ServiceM8(event.auth.accessToken);
-  const quotient = new Quotient();
+  const quotient = new Quotient(event.settings.quotient_api_key, event.settings.quotient_account_id);
 
   const quoteId = extractQuoteId(jobDescription);
 
@@ -471,7 +470,11 @@ async function handleSyncStatus(event) {
   const pdfBuffer = await quotient.getSignedQuotePDF(quoteId);
   await sm8.attachFile(jobUUID, pdfBuffer, `quote-${quoteId}-signed.pdf`);
 
-  const jobQueue = new JobQueue(sm8);
+  const jobQueue = new JobQueue(
+    sm8,
+    event.settings.sm8_parts_to_order_queue_uuid,
+    event.settings.sm8_ready_to_book_queue_uuid
+  );
   const { lineItems, queueName } = await jobQueue.processAcceptedQuote(jobUUID, quote);
 
   await sm8.addJobNote(
