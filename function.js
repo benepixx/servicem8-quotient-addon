@@ -384,19 +384,20 @@ ${bodyHtml}
 // ── Event handlers ────────────────────────────────────────────────────────────
 
 async function handleOpenQuote(event) {
-  const { uuid: jobUUID, company_id: companyId, job_description: jobDescription } = event;
+  const jobUUID = event.jobUUID;
+  const companyUUID = event.companyUUID;
   const sm8 = new ServiceM8(event.auth.accessToken);
   const quotient = new Quotient(event.settings.quotient_api_key, event.settings.quotient_account_id);
 
-  let quoteId = extractQuoteId(jobDescription);
+  const [job, company, contacts] = await Promise.all([
+    sm8.getJob(jobUUID),
+    sm8.getCompany(companyUUID),
+    sm8.getJobContacts(jobUUID),
+  ]);
+
+  let quoteId = extractQuoteId(job.job_description);
 
   if (!quoteId) {
-    const [job, company, contacts] = await Promise.all([
-      sm8.getJob(jobUUID),
-      sm8.getCompany(companyId),
-      sm8.getJobContacts(jobUUID),
-    ]);
-
     const primaryContact = Array.isArray(contacts) ? contacts[0] : null;
     const customerEmail = (primaryContact && primaryContact.email) || company.email || '';
     const customerPhone = (primaryContact && primaryContact.phone) || company.phone || '';
@@ -438,11 +439,12 @@ async function handleOpenQuote(event) {
 }
 
 async function handleSyncStatus(event) {
-  const { uuid: jobUUID, job_description: jobDescription } = event;
+  const jobUUID = event.jobUUID;
   const sm8 = new ServiceM8(event.auth.accessToken);
   const quotient = new Quotient(event.settings.quotient_api_key, event.settings.quotient_account_id);
 
-  const quoteId = extractQuoteId(jobDescription);
+  const job = await sm8.getJob(jobUUID);
+  const quoteId = extractQuoteId(job.job_description);
 
   if (!quoteId) {
     const html = renderPopup(`
